@@ -29,7 +29,7 @@ class Qiang(object):
         """
         data = {
             "CustomerAccount": "15357298885",
-            "Password": "Cyh19920605"
+            "Password": ""
         }
         login_url = "http://twk.qk365.com/Account/Login"
         # 设置请求头

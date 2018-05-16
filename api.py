@@ -1,28 +1,37 @@
 # coding:utf-8
 import requests
 import json
+import threading
+import time
+from log import logger
 
 
 class Api(object):
     def __init__(self):
         self.baseUrl = 'http://twk.qk365.com'
         self.session = self.login()
-
+    
     def request(self, url, data, is_post=True):
+        print('request:%s %s' % (url, data))
+        response = None
         if is_post:
             resp = self.session.post(url, data)
         else:
             resp = self.session.get(url=url, params=data)
-        content = resp.content.decode('utf-8')
-        print(content)
-        return json.loads(content)
-
+        try:
+            content = resp.content.decode('utf-8')
+            response = json.loads(content)
+            # print(response)
+        except Exception as e:
+            print(response)
+        return response
+    
     def login(self):
         data = {
             "CustomerAccount": "15357298885",
             "Password": ""
         }
-        login_url = "http://twk.qk365.com/Account/Login"
+        login_url = self.baseUrl + '/Account/Login'
         # 设置请求头
         headers = {
             'User-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'}
@@ -32,17 +41,33 @@ class Api(object):
         # 可以用print(session.cookies.get_dict())查看
         resp = session.post(login_url, data)
         return session
-
+    
+    def keep_login5(self):
+        while True:
+            response = self.keep_login()
+            if not response['Result']:
+                self.login()
+            time.sleep(5)
+    
     def keep_login(self):
         url = self.baseUrl + '/Account/KeepLogin'
         result = self.request(url, {}, False)
         return result
-
+    
+    def get_customer_info(self):
+        """
+        reponse['Data'] == '1007' 为经理
+        :return:
+        """
+        url = self.baseUrl + '/WaitAcceptOrder/GetCustomerInfo'
+        response = self.request(url, {'CurrentPage': 1, 'PageSize': 15}, True)
+        return response
+    
     def get_validate_code_config(self, order_no):
         url = self.baseUrl + '/WaitAcceptOrder/GetValidateCodeConfig'
         data = {"orderNo": order_no}
         return self.request(url, data, False)
-
+    
     def get_validate_code(self):
         data = []
         url = self.baseUrl + '/WaitAcceptOrder/GetValidateCode'
@@ -50,18 +75,21 @@ class Api(object):
         for img_data in result['Data']['imgDatas']:
             data.append(img_data)
         return {"code_id": result['Data']['imgId'], "data": data}
-
-    def get_friend(self, order_no, position_no):
+    
+    def get_friends(self, order_no, position_no):
         """
-        选择工友
+        根据订单和工种选人员
         :param order_no:
         :param position_no:
-        :return: {"Result": true, "Data": [{"CustomerAccount": 1, "CustomerName": ""}]}
+        :return: [{"CustomerAccount": 1, "CustomerName": ""}]
         """
         url = self.baseUrl + '/WaitAcceptOrder/GetCurrPositionFriends'
         data = {"positionNo": position_no, "decorationOrderNo": order_no}
-        return self.request(url, data, True)
-
+        response = self.request(url, data, True)
+        if response['Result']:
+            return response['Data']
+        return []
+    
     def get_all_friend(self):
         """
         CustomerAccount（手机号）、CustomerName、JobPositionNo、PositionName
@@ -70,7 +98,7 @@ class Api(object):
         url = self.baseUrl + '/Friends/GetDecorationFriendsInMappingSearch'
         data = {"NameOrTelmun": ""}
         return self.request(url, data, True)
-
+    
     def get_orders(self, page_size=100):
         """
         :param page_size:
@@ -83,7 +111,7 @@ class Api(object):
         if response['Result']:
             orders = response['Data']['ItemList']
         return orders
-
+    
     def get_require_job_positions(self, order_no):
         """
         订单必选职位
@@ -95,11 +123,8 @@ class Api(object):
         if response['Result']:
             return response['Data']
         return []
-
+    
     def accept_order(self, order_no, code_id="empty", code_value="empty", worker="", is_post=True):
-        # workerDatastr += (positionNo + "-" + customerAccount + ",");
-        worker_data_str = ""
-        worker_dict = worker_data_str[0:len(worker_data_str) - 1]
         url = self.baseUrl + '/WaitAcceptOrder/AcceptOrder'
         data = {"orderNo": order_no, "validCodeId": code_id, "validCodeValue": code_value, "workerDict": worker}
         return self.request(url, data, is_post)
@@ -109,5 +134,6 @@ if __name__ == '__main__':
     api = Api()
     # print(api.get_all_friend())
     # print(api.get_friend("M201804272771339", 9037))
-    print(api.get_orders())
+    # print(api.get_orders())
     # print(api.keep_login())
+    print(api.get_customer_info())

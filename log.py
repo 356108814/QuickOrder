@@ -1,4 +1,4 @@
-# import logging
+# coding:utf-8
 import logging.handlers
 
 LOG_FILE = 'order.log'
