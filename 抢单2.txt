@@ -1,0 +1,23 @@
+POST
+
+http://twk.qk365.com/WaitAcceptOrder/WaitAcceptOrderQuery
+CurrentPage: 1
+PageSize: 15
+CityNameDistrictName:
+{"Result":true,"Message":"","Data":{"TotalRecords":0,"PageSize":15,"TotalPage":0,"CurrentPage":1,"ItemList":[]}}
+
+http://twk.qk365.com/WaitAcceptOrder/GetAcceptWaitTime
+CurrentPage: 1
+PageSize: 15
+
+{"Result":true,"Message":"","Data":180}
+
+
+/WaitAcceptOrder/GetValidateCodeConfig", { orderNo: e.getAttribute("data-value")
+
+
+$.ajax({
+                                        url: '/WaitAcceptOrder/AcceptOrder?orderNo=' + e.getAttribute("data-value"),
+                                        data: { orderNo: e.getAttribute("data-value"), validCodeId: $("#dv_code").attr("code_id"), validCodeValue: code },
+                                        type: 'GET',
+                                        success: function (result) {

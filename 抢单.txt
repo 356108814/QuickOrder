@@ -1,0 +1,600 @@
+howLoading();
+        //$(".weichat_holepage").hide();
+        $.post("/Account/Login", { CustomerAccount: account, Password: password }, function (data) {
+            if (!data.Result) {
+                hideLoading();
+                ShowAlert("提示", data.Message);
+            } else {
+                var str = data.Data + "";
+                var num = str.indexOf("=")
+                str = str.substr(num + 1);
+                localStorage.setItem("jobAuth", str);
+                window.location.href = data.Data;
+            }
+        });
+
+      
+
+
+
+        var timer = null;
+        var AcceptWaitTime = 0;
+        var count = "";
+        //我要接活的点击事件
+        $(".wechatItemBox li.getjob").click(function () {
+            //$(this).addClass("current").siblings().removeClass("current");
+            if (count != 1)
+                if (!$(this).hasClass("hasItem"))
+                    $(this).addClass("hasItem").siblings().removeClass("hasItem");
+                else
+                    $(this).removeClass("hasItem");
+            else {
+                if (localStorage.getItem("jobAuth") == "SGQD")
+                    window.location.href = '/Pages/GetJob.html';
+                if (localStorage.getItem("jobAuth") == "BJQD")
+                    window.location.href = '/CleaningOrder/BJ_GetJob';
+                if (localStorage.getItem("jobAuth") == "CLQD")
+                    window.location.href = '/DrawingOrder/GetJob';
+            }
+        })
+        //我的订单的点击事件
+        $(".wechatItemBox .myorder").click(function () {
+            //$(this).addClass("current").siblings().removeClass("current");
+            if (count != 1)
+                if (!$(this).hasClass("hasItem"))
+                    $(this).addClass("hasItem").siblings().removeClass("hasItem");
+                else
+                    $(this).removeClass("hasItem");
+            else {
+                if (localStorage.getItem("jobAuth") == "SGQD")
+                    window.location.href = '/Pages/MyOrder.html';
+                if (localStorage.getItem("jobAuth") == "BJQD")
+                    window.location.href = '/CleaningOrder/BJ_MyOrder';
+                if (localStorage.getItem("jobAuth") == "CLQD")
+                    window.location.href = '/DrawingOrder/MyOrder';
+            }
+        })
+
+        var query = {
+            CurrentPage: 1,
+            PageSize: 15
+        };
+        var CurrentPage = 0;//初始为0
+        var CurrentCustomer = null;
+        /*placeholder兼容IE8*/
+        if (!('placeholder' in document.createElement('input'))) {
+            $('input[placeholder],textarea[placeholder]').each(function () {
+                var that = $(this),
+                    text = that.attr('placeholder');
+                if (that.val() === "") {
+                    that.val(text).addClass('placeholder');
+                }
+                that.focus(function () {
+                    if (that.val() === text) {
+                        that.val("").removeClass('placeholder');
+                    }
+                })
+                    .blur(function () {
+                        if (that.val() === "") {
+                            that.val(text).addClass('placeholder');
+                        }
+                    })
+                    .closest('form').submit(function () {
+                        if (that.val() === text) {
+                            that.val('');
+                        }
+                    });
+            });
+        }
+       
+        window.onload = function () {
+            //加载按钮信息
+            LoadButtons();
+            //取用户信息
+            GetCustomerInfo();
+            //获取等待时间
+            GetAcceptWaitTime();
+
+            // IsCredential();
+            $('.inner').dropload({
+                scrollArea: window,
+                loadUpFn: function (me) {
+                    CurrentPage = 1;
+                    LoadData(me, true);
+                },
+                loadDownFn: function (me) {
+                    CurrentPage++;
+                    LoadData(me, false);
+                }
+            });
+        }
+        function GetAcceptWaitTime() {
+            $.ajax({
+                url: '/WaitAcceptOrder/GetAcceptWaitTime',
+                type: 'POST',
+                data: query,
+                dataType: 'JSON',
+                success: function (result) {
+                    if (result.Result) {
+                        AcceptWaitTime = result.Data;
+                        Times_Math(AcceptWaitTime);
+                    }
+                },
+                error: function (e) {
+                    console.log(e);
+                }
+            });
+        }
+
+        function GetCustomerInfo() {
+            $.ajax({
+                url: '/WaitAcceptOrder/GetCustomerInfo',
+                type: 'POST',
+                data: query,
+                dataType: 'JSON',
+                async: false,
+                success: function (result) {
+                    if (result.Result) CurrentCustomer = result.Data;
+                    else Dialog.msg(result.Message);
+                },
+                error: function (e) {
+                    console.log(e);
+                }
+            });
+        }
+
+        function IsCredential() {
+            $.ajax({
+                url: '/Credential/NeedCredential',
+                type: 'POST',
+                data: query,
+                dataType: 'JSON',
+                success: function (result) {
+                    if (result.Result) {
+                        location.href = result.Data;
+                    }
+                },
+                error: function (e) {
+
+                }
+            });
+
+        }
+
+        function ClickSearch() {
+            $("#SearchBtn").attr('disabled', "disabled");
+            LoadData(undefined, false);
+            //add V2.5.2.0
+            $("#SearchBtn").removeAttr('disabled');
+        }
+
+        function LoadData(me, up) {
+            Dialog.showLoading();
+            $("#dataList").hide();
+            query.CityNameDistrictName = $("#SearchContent").val();
+            query.CurrentPage = CurrentPage;
+            // 清空内容
+            if (CurrentPage == 1) {
+                $('.lists').html('');
+            }
+            $.ajax({
+                url: '/WaitAcceptOrder/WaitAcceptOrderQuery',
+                type: 'POST',
+                data: query,
+                dataType: 'JSON',
+                success: function (result) {
+                    Dialog.closeLoading();
+                    var content = "";
+                    if (result.Result) {
+                        query.PageSize = result.Data.PageSize;
+                        query.TotalRecords = result.Data.TotalRecords;
+                        //1、判断当前地址点击后动作（项目经理-施工人员布置，非项目经理-确认框）
+                        clickfunstr = CurrentCustomer == '1007' ? 'ConstructorsChose(this)' : 'AcceptOrder(this)';
+                        for (var i = 0; i < result.Data.ItemList.length; i++) {
+                            var item = result.Data.ItemList[i];
+                            content += '<div class="weichat_content_block item" data-value="' + item.DecorationOrderNo + '"  onclick="' + clickfunstr + '">';
+                            content += '    <div class="weichat_block_content">';
+                            if (item.IsDistrictCanAccept == 0)
+                                content += '        <div class="weichat_block_address" style="background-color:#dfdfdf;">';
+                            else
+                                content += '        <div class="weichat_block_address">';
+                            content += '            <img src="../Content/images/weichat-receive02.png" alt="img">';
+                            content += '                <span>' + item.HouseAddress;
+                            content += '                </span>';
+                            content += '            </div>';
+                            content += '    </div>';
+                            content += '</div>';
+                        }
+                        if (up) {
+                            console.log("up");
+                            $('.lists').append(content);
+                            $('.lists').show();
+
+                            if (me != null && me != undefined) {
+                                me.resetload();
+
+                                // 解锁
+                                me.unlock();
+                                me.noData(false);
+                            }
+                        } else {
+                            if (result.Data.ItemList.length == 0) {
+                                console.log(1111);
+                                if (me != null && me != undefined) {
+                                    // 锁定
+                                    me.lock();
+                                    // 无数据
+                                    me.noData();
+                                }
+                            }
+
+                            setTimeout(function () {
+                                $('.lists').append(content);
+                                $('.lists').show();
+
+                                if (me != null && me != undefined) {
+                                    me.resetload();
+                                }
+                            }, 50);
+                        }
+
+                        if (CurrentPage == 1 && result.Data.TotalRecords == 0) {
+                            var emptyHtml = '<div style="width:100%;text-align: center;font-size: 2rem;color: gray;margin-top: 3rem;">你来晚了，订单已经被抢完了！<div>';
+                            $('.lists').append(emptyHtml);
+                            $('.lists').show();
+                            return;
+                        }
+                    } else {
+                        me.resetload();
+                        Dialog.msg(result.Message);
+                    }
+                    $("#SearchBtn").removeAttr("disabled");
+                },
+                error: function (e) {
+                    Dialog.closeLoading();
+                    if (me != undefined) {
+                        me.resetload();
+                    }
+                    if (CurrentPage > 1) {
+                        CurrentPage--;
+                    }
+                    $("#SearchBtn").removeAttr("disabled");
+                }
+            });
+        }
+
+        function AcceptOrder(e) {
+            var address = e.innerText;
+            Dialog.confirm('是否对“' + address + '”房间进行抢单？', function () {
+                //获取是否需要输入验证码
+                Dialog.showLoading();
+                $.g…
+
+
+
+
+
+        //用于页面模糊搜索功能
+        var friendData = [];
+        //设置选择的记录及值
+        var selectParam = {
+            itemIndex: -1,
+            param: '',
+            number:''
+        };
+        //列表滚动iscroll
+        var myScroll;
+        myScroll = new IScroll('.list-wrapper', {
+            mouseWheel: true,
+            click: true
+        });
+        $(document).ready(function () {
+            //点击字母滚动
+            $(".initials ul li").click(function () {
+                var _this = $(this);
+                var Initials = $('.initials');
+                var LetterBox = $('#letter');
+                var LetterHtml = _this.html();
+                LetterBox.html(LetterHtml).fadeIn();
+                Initials.css('background', 'rgba(145,145,145,0.6)');
+                setTimeout(function () {
+                    Initials.css('background', 'rgba(145,145,145,0)');
+                    LetterBox.fadeOut();
+                }, 1000);
+
+                var letter = _this.text();
+                if (letter === "#") { letter = "default" }
+                if ($("#" + letter).length > 0) {
+                    var df = $("#" + letter);
+                    myScroll.scrollToElement(df[0], 100)
+                }
+            });
+            $(".btns .cancle").click(function () {
+                //开启时间控制
+                var orderNo = $("#orderSubmit").attr("orderSubmit");
+                CloseTimeControl(orderNo);
+                $(".grade-one-modal").fadeOut(300)
+            });
+        })
+        //公众选择
+        function positionFriendChose(e) {
+            $(".input-text").val("");
+            friendData = [];
+            $(".list-scroll-content").html("");
+            var orderNo = $(e).find(".work-type").attr("orderNo");
+            var positionNo = $(e).find(".work-type").attr("positionNo");
+            var positionName = $(e).find(".work-type").text();
+            var currchosen = $(e).find(".name").text();
+            //根据岗位和CurrentCustomer 找好友
+            Dialog.showLoading();
+            $.ajax({
+                url: '/WaitAcceptOrder/GetCurrPositionFriends',
+                data: { positionNo: positionNo, decorationOrderNo:orderNo },
+                type: 'post',
+                success: function (result) {
+                    var friendsstr = "";
+                    if (result.Result) {
+                        var data = [];
+                        //排除已被选择的公共人员
+                        var havechosen = [];
+                        $(".select-region li").map(function () {
+                            var val = $(this).find(".name").text();
+                            if (val != '请选择')
+                                havechosen.push(val);
+                        });
+                        if (havechosen.length > 0) {
+                            result.Data.forEach(function (item) {
+                                var isin = false;
+                                havechosen.forEach(function (chosenitem) {
+                                    if (item.CustomerName == chosenitem) isin = true;
+                                    if (item.CustomerName == currchosen) isin = false;
+                                });
+                                if (!isin) data.push(item);
+                            });
+                        } else {
+                            data = result.Data;
+                        }
+                        friendData = data;
+                        if (data.length > 0) {
+                            $(".initials").show();
+                            data.forEach(function (item) {
+                                friendsstr +=
+                                    '<div class="list-item retinabb" onclick="choseFriend(this)">' +
+                                    '<span class="friend-avatar">' +
+                                    '<img src="../Content/images/avatar.png"/>' +
+                                    '</span>' +
+                                    '<span class="friend-name" friendAccount="' + item.CustomerAccount + '">' + item.CustomerName + '(' + item.CustomerAccount + ')</span > ' +
+                                    '</div >';
+                            });
+                        } else {
+                            friendsstr += "<div style='padding:3rem;height:45rem;line-height:3rem;' onclick='closeDialog2()'>亲，" + positionName + "这个工种您的好友清单中没有闲置资源，请先通知他们把工作完成，否则无法抢单！</div>";
+                            $(".initials").hide();
+                        }
+                    } else {
+                        friendsstr += "<div style='padding:3rem;height:45rem;line-height:3rem;' onclick='closeDialog2()'>亲，" + positionName + "这个工种您的好友清单中没有闲置资源，请先通知他们把工作完成，否则无法抢单！</div>";
+                        $(".initials").hide();
+                    }
+                    $(".list-scroll-content").html(friendsstr);
+                    initials();
+                    myScroll.refresh();
+                    Dialog.closeLoading();
+                },
+                error: function (error) { Dialog.closeLoading(); }
+            });
+            selectParam.itemIndex = $(e).index();
+            $(".getProjcetView").fadeIn();
+            myScroll.refresh();
+        }
+
+        //在工种列表选择相应人员并赋值 
+        function choseFriend(e) {
+            var text = $(e).find(".friend-name").text();
+            var number = $(e).find(".friend-name").attr("friendAccount");
+            selectParam.param = text;
+            selectParam.number = number;
+            $(".getProjcetView").fadeOut();
+            var signedLi = $(".select-region li").eq(selectParam.itemIndex);
+            $(signedLi).find(".name").text(selectParam.param);
+            $(signedLi).find(".name").attr("customerAccount", selectParam.number);
+        }
+
+        //关闭二级弹窗
+        function closeDialog2() {
+            $(".getProjcetView").fadeOut();
+        }
+
+        //选择完成提交
+        function submitData() {
+            var orderNo = $("#orderSubmit").attr("orderSubmit");
+            var workerData = [];
+            var workerDatastr = "";
+            $(".select-region li").map(function () {
+                var positionNo = $(this).find(".work-type").attr("positionno");
+                var val = $(this).find(".name").text();
+                var num = $(this).find(".name").attr("customerAccount");
+                if (val != '请选择') {
+                    workerData.push(val);
+                    workerDatastr += (positionNo + "-" + num + ",");
+                } else {
+                    val = "";
+                    workerData.push(val);
+                }
+            });
+            var isSubmit = true;
+            workerData.forEach(function (item) {
+                if (item == "") {
+                    isSubmit = false;
+                    Dialog.msg("请先分配当前地址的施工人员");
+                    return;
+                }
+            });
+            if (isSubmit) {
+                //保持原本的抢单功能
+                Dialog.showLoading();
+                $.getJSON("/WaitAcceptOrder/GetValidateCodeConfig", { orderNo: orderNo }, function (result) {
+                    Dialog.closeLoading();
+                    if (!result.Result) {
+                        Dialog.msg(result.Message);
+                        return;
+                    } else {
+                        if (result.Data.InputCode) {
+                            var codeHtml = '<div id="dv_code"><ul></ul><div id="dv_code_refresh"><span class="refresh_img"><img src="../Content/images/code_refresh.png" /></span><span  class="refresh_lbl">刷新</span></div></div>';
+                            layer.open({
+                                title: "<span class='code_title'>请选择下图中所有的</span><span class='code_title' style='color:#FA2121;margin-left:5px;'>红色字符</span>",
+                                type: 1,
+                                content: codeHtml,
+                                btn: ['确定', '关闭'],
+                                yes: function (index) {
+                                    var code = "";
+                                    $("#dv_code").find("ul").find("li").each(function () {
+                                        if (!$(this).find(".li_selected").is(":hidden")) {
+                                            code += $(this).attr("data-index");
+                                        }
+                                    });
+
+                                    if (code == "") {
+                                        Dialog.msg('请先选择图片！');
+                                        return;
+                                    }
+
+                                    Dialog.showLoading("抢单中...");
+                                    $.ajax({
+                                        url: '/WaitAcceptOrder/AcceptOrder',
+                                        data: { orderNo: orderNo, validCodeId: $("#dv_code").attr("code_id"), validCodeValue: code, workerDict: workerDatastr.substring(0, workerDatastr.length - 1) },
+                                        type: 'post',
+                                        success: function (result) {
+                                            Dialog.closeLoading();
+
+                                            if (result.Result) {
+                                                layer.close(index);
+                                                Dialog.msg('抢单成功！', function () {
+                                                    window.location.href = '/Pages/MyOrder.html';
+                                                });
+                                            } else {
+                                                Dialog.msg(result.Message, function () {
+                                                    if (result.Message == "该单已被抢！") {
+                                                        $(".grade-one-modal").fadeOut();
+                                                        layer.close(index);
+                                                        CurrentPage = 1;
+                                                        LoadData();
+                                                    } else {
+                                                        //刷新验证码
+                                                        $("#dv_code_refresh").click();
+                                                    }
+                                                });
+                                            }
+                                        },
+                                        error: function (e) {
+                                            Dialog.closeLoading();
+                                            $("#dv_code_refresh").click();
+
+                                            //Dialog.msg("网络异常，请稍后重试！");
+                                            console.log(e);
+                                        }
+                                    });
+                                },
+                                success: function (elem) {
+                                    $("#dv_code_refresh").click(function () {
+                                        //获取验证码
+                                        $.getJSON("/WaitAcceptOrder/GetValidateCode", {}, function (result) {
+                                            //$("#img_code").attr("src", "data:image/png;base64," + result.Data.imgData);
+                                            //$("#img_code").attr("code_id", result.Data.imgId);
+
+                                            $("#dv_code").find("ul").empty();
+                                            for (var i = 0; i < result.Data.imgDatas.length; i++) {
+                                                var liHtml = '<li data-index="' + i + '"><div><img src="data:image/png;base64,' + result.Data.imgDatas[i] + '" /> <div class="li_selected"><img src="../Content/images/code_selected.png" /></div></div></li>';
+                                                $("#dv_code").find("ul").append(liHtml);
+                                            }
+
+                                            $("#dv_code").attr("code_id", result.Data.imgId);
+
+                                            $("#dv_code").find("ul").find("li").click(function () {
+                                                if ($(this).find(".li_selected").is(":hidden")) {
+                                                    $(this).find(".li_selected").show();
+                                                } else {
+                                                    $(this).find(".li_selected").hide();
+                                                }
+                                            });
+                                        });
+                                    });
+
+                                    $("#dv_code_refresh").click();
+                                }
+                            });
+                        } else {
+                            Dialog.showLoading("抢单中...");
+                            $.ajax({
+                                url: '/WaitAcceptOrder/AcceptOrder',
+                                data: { orderNo: orderNo, validCodeId: "empty", validCodeValue: "empty", workerDict: workerDatastr.substring(0, workerDatastr.length - 1) },
+                                type: 'GET',
+                                success: function (result) {
+                                    Dialog.closeLoading();
+
+                                    if (result.Result) {
+                                        Dialog.msg('抢订成功', function () {
+                                            window.location.href = '/Pages/MyOrder.html';
+                                        });
+                                    } else {
+                                        Dialog.msg(result.Message, function () {
+                                            if (result.Message == "该单已被抢！") {
+                                                $(".grade-one-modal").fadeOut();
+                                                CurrentPage = 1;
+                                                LoadData();
+                                            }
+                                        });
+                                    }
+                                },
+                                error: function (e) {
+                                    Dialog.closeLoading(loader);
+
+                                    Dialog.msg("网络异常，请稍后重试！");
+                                    console.log(e);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
+
+        //好友搜索
+        function friendSearch() {
+            var searchtxt = $(".input-text").val();
+            if (friendData.length > 0) {
+                var innerfriendsstr = "";
+                var cfriendData = [];
+                if (searchtxt != "") {
+                    friendData.forEach(function (item) {
+                        if (item.CustomerName.indexOf(searchtxt) > -1 || item.CustomerAccount.indexOf(searchtxt) > -1) {
+                            cfriendData.push(item);
+                        }
+                    });
+                    if (cfriendData.length > 0) {
+                        cfriendData.forEach(function (item) {
+                            innerfriendsstr +=
+                                '<div class="list-item retinabb" onclick="choseFriend(this)">' +
+                                '<span class="friend-avatar">' +
+                                '<img src="../Content/images/avatar.png"/>' +
+                                '</span>' +
+                                '<span class="friend-name" friendAccount="' + item.CustomerAccount + '">' + item.CustomerName + '</span>' +
+                                '</div >';
+                        });
+                    }
+                    
+                } else {
+                    friendData.forEach(function (item) {
+                        innerfriendsstr +=
+                            '<div class="list-item retinabb" onclick="choseFriend(this)">' +
+                            '<span class="friend-avatar">' +
+                            '<img src="../Content/images/avatar.png"/>' +
+                            '</span>' +
+                            '<span class="friend-name" friendAccount="' + item.CustomerAccount + '">' + item.CustomerName + '</span>' +
+                            '</div >';
+                    });
+                }
+                $(".list-scroll-content").html(innerfriendsstr);
+                initials();
+                myScroll.refresh();
+            }
+        }
+    
