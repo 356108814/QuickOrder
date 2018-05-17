@@ -20,7 +20,7 @@ class Order(object):
     
     def check_orders(self):
         while True:
-            self.orders = self.api.get_orders('.'.join(config.district_dict[config.account]))
+            self.orders = self.api.get_orders(','.join(config.district_dict[config.account]))
             # if self.index == 10:
             #     self.orders = config.test_orders
             if len(self.orders) > 0:
