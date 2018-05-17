@@ -1,8 +1,8 @@
 # coding:utf-8
 import requests
 import json
-import threading
 import time
+import config
 from log import logger
 
 
@@ -10,9 +10,9 @@ class Api(object):
     def __init__(self):
         self.baseUrl = 'http://twk.qk365.com'
         self.session = self.login()
-    
+
     def request(self, url, data, is_post=True):
-        print('request:%s %s' % (url, data))
+        logger.debug('request: %s %s' % (url, data))
         response = None
         if is_post:
             resp = self.session.post(url, data)
@@ -21,15 +21,15 @@ class Api(object):
         try:
             content = resp.content.decode('utf-8')
             response = json.loads(content)
-            # print(response)
+            logger.debug('response: %s %s %s' % (url, data, response))
         except Exception as e:
-            print(response)
+            logger.error(response)
         return response
-    
+
     def login(self):
         data = {
-            "CustomerAccount": "15357298885",
-            "Password": ""
+            'CustomerAccoun': config.account,
+            'Password': config.pwd
         }
         login_url = self.baseUrl + '/Account/Login'
         # 设置请求头
@@ -41,19 +41,19 @@ class Api(object):
         # 可以用print(session.cookies.get_dict())查看
         resp = session.post(login_url, data)
         return session
-    
+
     def keep_login5(self):
         while True:
             response = self.keep_login()
             if not response['Result']:
                 self.login()
             time.sleep(5)
-    
+
     def keep_login(self):
         url = self.baseUrl + '/Account/KeepLogin'
         result = self.request(url, {}, False)
         return result
-    
+
     def get_customer_info(self):
         """
         reponse['Data'] == '1007' 为经理
@@ -62,12 +62,12 @@ class Api(object):
         url = self.baseUrl + '/WaitAcceptOrder/GetCustomerInfo'
         response = self.request(url, {'CurrentPage': 1, 'PageSize': 15}, True)
         return response
-    
+
     def get_validate_code_config(self, order_no):
         url = self.baseUrl + '/WaitAcceptOrder/GetValidateCodeConfig'
         data = {"orderNo": order_no}
         return self.request(url, data, False)
-    
+
     def get_validate_code(self):
         data = []
         url = self.baseUrl + '/WaitAcceptOrder/GetValidateCode'
@@ -75,7 +75,7 @@ class Api(object):
         for img_data in result['Data']['imgDatas']:
             data.append(img_data)
         return {"code_id": result['Data']['imgId'], "data": data}
-    
+
     def get_friends(self, order_no, position_no):
         """
         根据订单和工种选人员
@@ -89,7 +89,7 @@ class Api(object):
         if response['Result']:
             return response['Data']
         return []
-    
+
     def get_all_friend(self):
         """
         CustomerAccount（手机号）、CustomerName、JobPositionNo、PositionName
@@ -98,20 +98,19 @@ class Api(object):
         url = self.baseUrl + '/Friends/GetDecorationFriendsInMappingSearch'
         data = {"NameOrTelmun": ""}
         return self.request(url, data, True)
-    
-    def get_orders(self, page_size=100):
+
+    def get_orders(self, district_name='', page_size=100):
         """
-        :param page_size:
         :return: {"Result":true,"Message":"","Data":{"TotalRecords":0,"PageSize":100,"TotalPage":0,"CurrentPage":1,"ItemList":[]}}
         """
         orders = []
         url = self.baseUrl + '/WaitAcceptOrder/WaitAcceptOrderQuery'
-        data = {"CurrentPage": 1, "PageSize": page_size, "CityNameDistrictName": ""}
+        data = {"CurrentPage": 1, "PageSize": page_size, "CityNameDistrictName": district_name}
         response = self.request(url, data)
         if response['Result']:
             orders = response['Data']['ItemList']
         return orders
-    
+
     def get_require_job_positions(self, order_no):
         """
         订单必选职位
@@ -123,7 +122,7 @@ class Api(object):
         if response['Result']:
             return response['Data']
         return []
-    
+
     def accept_order(self, order_no, code_id="empty", code_value="empty", worker="", is_post=True):
         url = self.baseUrl + '/WaitAcceptOrder/AcceptOrder'
         data = {"orderNo": order_no, "validCodeId": code_id, "validCodeValue": code_value, "workerDict": worker}

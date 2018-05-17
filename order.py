@@ -12,6 +12,7 @@ class Order(object):
         self.api = Api()
         self.code = Code(self.api)
         self.orders = []
+        self.index = 0
     
     def start_check_orders(self):
         t = threading.Thread(target=self.check_orders, args=())
@@ -19,22 +20,28 @@ class Order(object):
     
     def check_orders(self):
         while True:
-            self.orders = self.api.get_orders()
+            self.orders = self.api.get_orders('.'.join(config.district_dict[config.account]))
+            # if self.index == 10:
+            #     self.orders = config.test_orders
             if len(self.orders) > 0:
                 logger.info(self.orders)
                 break
-            time.sleep(0.5)
+            time.sleep(0.1)
+            self.index += 1
     
     def is_can_accept(self, order):
-        return True
-    
+        return order and order['DistrictName'] in config.district_dict[config.account]
+
     def start_accept_order(self):
-        while len(self.orders) > 0:
-            order = self.orders.pop()
-            if self.is_can_accept(order):
-                order_no = order['DecorationOrderNo']
-                t = threading.Thread(target=self.submit_order, args=(order_no,))
-                t.start()
+        while True:
+            size = len(self.orders)
+            if size > 0:
+                logger.info('orders len:%s' % size)
+                order = self.orders.pop()
+                if self.is_can_accept(order):
+                    order_no = order['DecorationOrderNo']
+                    t = threading.Thread(target=self.submit_order, args=(order_no,))
+                    t.start()
     
     def submit_order(self, order_no):
         """
@@ -50,22 +57,22 @@ class Order(object):
         code_value = 'empty'
         code_config = self.api.get_validate_code_config(order_no)
         if code_config['Result']:
-            is_validate = True # code_config['Data']['InputCode']
+            is_validate = code_config['Data']['InputCode']
             if is_validate:
                 code = self.code.get_validate_code(order_no)
                 code_id = code['code_id']
                 code_value = code['code_value']
         
-        if config.is_manager('15357298885'):
+        if config.is_manager(config.account):
             is_post = True
             # 设置施工人员
             worker = self.get_worker(order_no)
         
         response = self.api.accept_order(order_no, code_id, code_value, worker, is_post)
         if response['Result']:
-            logger.info('抢单成功：%s' % response)
+            logger.info('================order success：%s %s' % (order_no, response))
         else:
-            logger.info('%s抢单失败:%s' % (order_no, response['Message']))
+            logger.info('order failure %s:%s' % (order_no, response))
     
     def get_worker(self, order_no):
         """根据订单选择工友"""
@@ -90,5 +97,5 @@ if __name__ == '__main__':
     # o.start_check_orders()
     # o.start_accept_order()
     # o.orders = [{'DecorationOrderNo': 'M201804272771339'}, {'DecorationOrderNo': 'M201804272771336'}]
-    print(o.submit_order('M201804272771339'))
+    # print(o.submit_order('M201805162941119'))
     # o.start_accept_order()
