@@ -20,7 +20,8 @@ class Order(object):
     
     def check_orders(self):
         while True:
-            self.orders = self.api.get_orders(','.join(config.district_dict[config.account]))
+            if self.is_can_check():
+                self.orders = self.api.get_orders(','.join(config.district_dict[config.account]))
             # if self.index == 10:
             #     self.orders = config.test_orders
             if len(self.orders) > 0:
@@ -28,6 +29,12 @@ class Order(object):
                 break
             time.sleep(0.1)
             self.index += 1
+    
+    def is_can_check(self):
+        now = time.localtime(time.time())
+        hour = now.tm_hour
+        minute = now.tm_min
+        return hour >= 8 and (minute >= 59 or minute <= 3)
     
     def is_can_accept(self, order):
         return order and order['DistrictName'] in config.district_dict[config.account]
