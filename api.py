@@ -28,7 +28,7 @@ class Api(object):
 
     def login(self):
         data = {
-            'CustomerAccoun': config.account,
+            'CustomerAccount': config.account,
             'Password': config.pwd
         }
         login_url = self.baseUrl + '/Account/Login'
@@ -105,8 +105,9 @@ class Api(object):
         """
         orders = []
         url = self.baseUrl + '/WaitAcceptOrder/WaitAcceptOrderQuery'
-        data = {"CurrentPage": 1, "PageSize": page_size, "CityNameDistrictName": district_name}
+        data = {"CurrentPage": 1, "PageSize": page_size, "CityNameDistrictName": ''}
         response = self.request(url, data)
+        print(response)
         if response['Result']:
             orders = response['Data']['ItemList']
         return orders
@@ -133,6 +134,6 @@ if __name__ == '__main__':
     api = Api()
     # print(api.get_all_friend())
     # print(api.get_friend("M201804272771339", 9037))
-    # print(api.get_orders())
+    print(api.get_orders())
     # print(api.keep_login())
-    print(api.get_customer_info())
+    # print(api.get_customer_info())
