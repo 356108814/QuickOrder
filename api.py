@@ -12,7 +12,6 @@ class Api(object):
         self.session = self.login()
 
     def request(self, url, data, is_post=True):
-        logger.debug('request: %s %s' % (url, data))
         response = None
         if is_post:
             resp = self.session.post(url, data)
