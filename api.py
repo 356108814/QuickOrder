@@ -21,6 +21,7 @@ class Api(object):
             content = resp.content.decode('utf-8')
             response = json.loads(content)
             logger.debug('response: %s %s %s' % (url, data, response))
+            print('response: %s %s %s' % (url, data, response))
         except Exception as e:
             response = None
             logger.error(response)

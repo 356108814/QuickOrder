@@ -20,7 +20,7 @@ class Order(object):
     
     def check_orders(self):
         while True:
-            if self.is_can_check():
+            if self.is_can_check() or True:
                 self.orders = self.api.get_orders("")
             if len(self.orders) > 0:
                 logger.info(self.orders)
@@ -37,13 +37,15 @@ class Order(object):
         return order and order['DistrictName'] in config.district_dict[config.account]
 
     def start_accept_order(self):
-        size = len(self.orders)
-        if size > 0:
-            logger.info('orders len:%s' % size)
-            order = self.orders.pop()
-            order_no = order['DecorationOrderNo']
-            t = threading.Thread(target=self.submit_order, args=(order_no,))
-            t.start()
+        while True:
+            size = len(self.orders)
+            if size > 0:
+                logger.info('orders len:%s' % size)
+                order = self.orders.pop()
+                order_no = order['DecorationOrderNo']
+                t = threading.Thread(target=self.submit_order, args=(order_no,))
+                t.start()
+                time.sleep(1)
     
     def submit_order(self, order_no):
         """
