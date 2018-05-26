@@ -74,7 +74,7 @@ class Order(object):
         if response and response['Result']:
             logger.info('================order success：%s %s' % (order_no, response))
         else:
-            logger.info('order failure %s:%s' % (order_no, response))
+            logger.info('================order failure %s:%s' % (order_no, response))
     
     def get_worker(self, order_no):
         """根据订单选择工友"""
@@ -105,12 +105,13 @@ class Order(object):
         for order in self.orders:
             if not self.is_can_accept(order):
                 continue
+            logger.info('================start accept order ：%s ' % order)
             order_no = order['DecorationOrderNo']
             response = self.api.accept_order(order_no, 'empty', 'empty', 'empty', False)
             if response and response['Result']:
                 logger.info('================order success：%s %s' % (order_no, response))
             else:
-                logger.info('order failure %s:%s' % (order_no, response))
+                logger.info('================order failure %s:%s' % (order_no, response))
 
         self.start_accept_order()
             

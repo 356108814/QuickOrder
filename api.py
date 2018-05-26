@@ -22,6 +22,7 @@ class Api(object):
             response = json.loads(content)
             logger.debug('response: %s %s %s' % (url, data, response))
         except Exception as e:
+            response = None
             logger.error(response)
         return response
 
