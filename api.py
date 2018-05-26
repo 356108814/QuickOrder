@@ -72,9 +72,11 @@ class Api(object):
         data = []
         url = self.baseUrl + '/WaitAcceptOrder/GetValidateCode'
         result = self.request(url, {}, False)
-        for img_data in result['Data']['imgDatas']:
-            data.append(img_data)
-        return {"code_id": result['Data']['imgId'], "data": data}
+        if result:
+            for img_data in result['Data']['imgDatas']:
+                data.append(img_data)
+            return {"code_id": result['Data']['imgId'], "data": data}
+        return {"code_id": "empty", "data": "empty"}
 
     def get_friends(self, order_no, position_no):
         """
@@ -86,7 +88,7 @@ class Api(object):
         url = self.baseUrl + '/WaitAcceptOrder/GetCurrPositionFriends'
         data = {"positionNo": position_no, "decorationOrderNo": order_no}
         response = self.request(url, data, True)
-        if response['Result']:
+        if response and response['Result']:
             return response['Data']
         return []
 
