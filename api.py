@@ -106,8 +106,7 @@ class Api(object):
         url = self.baseUrl + '/WaitAcceptOrder/WaitAcceptOrderQuery'
         data = {"CurrentPage": 1, "PageSize": page_size, "CityNameDistrictName": ''}
         response = self.request(url, data)
-        print(response)
-        if response['Result']:
+        if response is not None and response['Result']:
             orders = response['Data']['ItemList']
         return orders
 
@@ -133,6 +132,8 @@ if __name__ == '__main__':
     api = Api()
     # print(api.get_all_friend())
     # print(api.get_friend("M201804272771339", 9037))
-    print(api.get_orders())
+    # print(api.get_orders())
     # print(api.keep_login())
     # print(api.get_customer_info())
+    # print(api.get_validate_code_config("M201805202975547"))
+    print(api.get_require_job_positions("M201805202975547"))

@@ -21,14 +21,11 @@ class Order(object):
     def check_orders(self):
         while True:
             if self.is_can_check():
-                self.orders = self.api.get_orders(','.join(config.district_dict[config.account]))
-            # if self.index == 10:
-            #     self.orders = config.test_orders
+                self.orders = self.api.get_orders("")
             if len(self.orders) > 0:
                 logger.info(self.orders)
                 break
             time.sleep(0.1)
-            self.index += 1
     
     def is_can_check(self):
         now = time.localtime(time.time())
@@ -40,15 +37,13 @@ class Order(object):
         return order and order['DistrictName'] in config.district_dict[config.account]
 
     def start_accept_order(self):
-        while True:
-            size = len(self.orders)
-            if size > 0:
-                logger.info('orders len:%s' % size)
-                order = self.orders.pop()
-                if self.is_can_accept(order):
-                    order_no = order['DecorationOrderNo']
-                    t = threading.Thread(target=self.submit_order, args=(order_no,))
-                    t.start()
+        size = len(self.orders)
+        if size > 0:
+            logger.info('orders len:%s' % size)
+            order = self.orders.pop()
+            order_no = order['DecorationOrderNo']
+            t = threading.Thread(target=self.submit_order, args=(order_no,))
+            t.start()
     
     def submit_order(self, order_no):
         """
@@ -76,7 +71,7 @@ class Order(object):
             worker = self.get_worker(order_no)
         
         response = self.api.accept_order(order_no, code_id, code_value, worker, is_post)
-        if response['Result']:
+        if response and response['Result']:
             logger.info('================order success：%s %s' % (order_no, response))
         else:
             logger.info('order failure %s:%s' % (order_no, response))
@@ -85,6 +80,7 @@ class Order(object):
         """根据订单选择工友"""
         worker = ''
         require_positions = self.api.get_require_job_positions(order_no)
+        print(require_positions)
         for p in require_positions:
             position_no = p['PositionNo']
             friends = self.api.get_friends(order_no, position_no)
@@ -97,7 +93,27 @@ class Order(object):
     def start_keep_login(self):
         t = threading.Thread(target=self.api.keep_login5, args=())
         t.start()
+        
+    def start_auto_order(self):
+        while True:
+            self.orders = self.api.get_orders("")
+            if len(self.orders) > 0:
+                logger.info(self.orders)
+                break
+            time.sleep(0.1)
+        
+        for order in self.orders:
+            if not self.is_can_accept(order):
+                continue
+            order_no = order['DecorationOrderNo']
+            response = self.api.accept_order(order_no, 'empty', 'empty', 'empty', False)
+            if response and response['Result']:
+                logger.info('================order success：%s %s' % (order_no, response))
+            else:
+                logger.info('order failure %s:%s' % (order_no, response))
 
+        self.start_accept_order()
+            
 
 if __name__ == '__main__':
     o = Order()
@@ -106,3 +122,5 @@ if __name__ == '__main__':
     # o.orders = [{'DecorationOrderNo': 'M201804272771339'}, {'DecorationOrderNo': 'M201804272771336'}]
     # print(o.submit_order('M201805162941119'))
     # o.start_accept_order()
+    # print(o.get_worker("M201805202975547"))
+    o.start_auto_order()

@@ -1,7 +1,9 @@
 # coding:utf-8
 
 is_debug = True
-base_image_dir = 'F:/PyWorkspace/QuickOrder/images'
+# base_image_dir = 'F:/PyWorkspace/QuickOrder/images'
+base_image_dir = 'G:/GitHub/QuickOrder/images'
+
 
 
 friends = {
@@ -41,7 +43,7 @@ friends = {
 }
 
 account = '15357298885'
-pwd = ''
+pwd = 'Cyh19920605'
 
 # 是否为经理
 manager_dict = {
